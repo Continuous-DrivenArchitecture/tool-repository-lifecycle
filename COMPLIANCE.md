@@ -9,19 +9,26 @@ kind — was assessed, read directly from the standard document (see
 [standards/README.md](standards/README.md) for its canonical location),
 never inferred or copied.
 
-This assessment predates this repository's existence on GitHub — see
-[Status](#status) at the end. It records what is already true at the
-file level, and what remains true only once the repository is created and
-configured remotely (the explicit next task, per this formalization's own
-governing instruction: no remote repository creation or GitHub mutation
-happens as part of building this repository locally).
+This repository now exists at
+[Continuous-DrivenArchitecture/tool-repository-lifecycle](https://github.com/Continuous-DrivenArchitecture/tool-repository-lifecycle)
+and has been provisioned for real, against its own baseline profile, using
+its own tooling (`commands/provision-repository.ps1 -Profile
+repository-baseline`) — a self-hosting test. Every row below marked
+**VERIFIED LIVE** was independently re-read from the GitHub API after
+provisioning, not inferred from the provisioner's own report.
+
+The one unavoidable exception is documented, not hidden: the repository's
+first commit was pushed directly to `main`, before any ruleset could exist
+to route it through a pull request — a **BOOTSTRAP EXCEPTION**, consistent
+with every prior repository bootstrap case in this engagement (see
+`reports/bootstrap-exception-01.json`, kept local and gitignored, not
+committed). Every change since has gone through a pull request gated by
+`ci-required` and Protect main.
 
 Legend: **FILE-LEVEL READY** — the repository's own files already satisfy
-this. **EXTERNAL GITHUB SETUP REQUIRED** — satisfying this needs a live
-GitHub repository to configure (branch protection, Actions permissions,
-security toggles, Dependabot enablement); nothing more can be done at the
-file level. **NOT APPLICABLE** — the baseline rule does not apply to a
-repository of this kind.
+this. **VERIFIED LIVE** — independently re-read from the live GitHub
+repository after real provisioning. **NOT APPLICABLE** — the baseline rule
+does not apply to a repository of this kind.
 
 ## Branching
 
@@ -33,14 +40,14 @@ repository of this kind.
 
 | Rule | Status | Note |
 |---|---|---|
-| PR required, squash-only merges, conversation resolution, force-push/deletion blocked, `ci-required` as the sole required check, zero bypass actors | EXTERNAL GITHUB SETUP REQUIRED | A ruleset can only be created against a repository that exists remotely. `.github/workflows/ci.yml`'s `ci-required` job already exists at the file level and is designed to be exactly what a future ruleset would require (see docs/safety-model.md's own description of this pattern, proven in the source engagement this tooling formalizes). |
+| PR required, squash-only merges, conversation resolution, force-push/deletion blocked, `ci-required` as the sole required check, zero bypass actors | VERIFIED LIVE | The "Protect main" ruleset is active on the real repository: `required_status_checks` names only `ci-required` (strict mode), `allowed_merge_methods: ["squash"]`, `non_fast_forward` and `deletion` rules present, `bypass_actors: []`, `current_user_can_bypass: "never"`. A direct push to `main` was attempted and rejected (`GH013`, both rule violations named explicitly); PR #1 was then merged through the normal flow (squash, `ci-required` green, branch auto-deleted on merge). |
 
 ## Actions permissions / supply-chain posture
 
 | Rule | Status | Note |
 |---|---|---|
 | Third-party Actions pinned to a full commit SHA | FILE-LEVEL READY | `.github/workflows/ci.yml` pins `actions/checkout` to a verified commit SHA (`3d3c42e5aac5ba805825da76410c181273ba90b1`, `v7.0.1`), not a floating tag. |
-| `allowed_actions=selected`, SHA-pinning *required* (repo setting), default workflow token permissions = read | EXTERNAL GITHUB SETUP REQUIRED | These are repository settings, not files; nothing to configure until the repository exists. |
+| `allowed_actions=selected`, SHA-pinning *required* (repo setting), default workflow token permissions = read | VERIFIED LIVE | `allowed_actions: "selected"`, `sha_pinning_required: true`, `default_workflow_permissions: "read"`, `can_approve_pull_request_reviews: false` — all read back directly from `GET /repos/.../actions/permissions` and `.../actions/permissions/workflow`. |
 
 ## Secrets / variables handling
 
@@ -52,25 +59,25 @@ repository of this kind.
 
 | Rule | Status | Note |
 |---|---|---|
-| Dependabot version updates enabled for every applicable ecosystem, targeting `main` | FILE-LEVEL READY (file) / EXTERNAL GITHUB SETUP REQUIRED (enablement) | `.github/dependabot.yml` configures the `github-actions` ecosystem (the only one applicable — there is no package ecosystem here) targeting `main`. Dependabot itself must still be enabled on the live repository. |
-| Dependabot security alerts enabled | EXTERNAL GITHUB SETUP REQUIRED | Repository setting. |
+| Dependabot version updates enabled for every applicable ecosystem, targeting `main` | FILE-LEVEL READY | `.github/dependabot.yml` configures the `github-actions` ecosystem (the only one applicable — there is no package ecosystem here) targeting `main`. |
+| Dependabot security alerts enabled | VERIFIED LIVE | `dependabot_security_updates: "enabled"` and `dependabot_vulnerability_alerts: true`, read back directly from the live repository. |
 
 ## Baseline security controls
 
 | Rule | Status | Note |
 |---|---|---|
-| Secret scanning + push protection enabled | EXTERNAL GITHUB SETUP REQUIRED | Repository settings. |
+| Secret scanning + push protection enabled | VERIFIED LIVE | `secret_scanning: "enabled"`, `secret_scanning_push_protection: "enabled"`, read back directly from the live repository. |
 | CodeQL default setup (where a supported language is present) | NOT APPLICABLE | MAY-level per the standard, language-dependent. `profiles/repository-baseline.json` (the profile this repository is actually provisioned against -- see "What this reveals") correctly leaves `security.codeQLDefaultSetup.applicableLanguages` empty; PowerShell is not a CodeQL-supported language. |
 
 ## Repository hygiene
 
 | Rule | Status | Note |
 |---|---|---|
-| Delete branch on merge enabled | EXTERNAL GITHUB SETUP REQUIRED | Repository setting. |
+| Delete branch on merge enabled | VERIFIED LIVE | `delete_branch_on_merge: true`, read back directly; also demonstrated in practice — PR #1's `fix/npm-section-guard` branch was auto-deleted on merge. |
 | No workflow file exists that is not in active use | FILE-LEVEL READY | Exactly one workflow file (`ci.yml`), actively referenced by this document's own `ci-required` job description; nothing orphaned. |
-| No GitHub Environment exists that is not referenced by a current workflow | FILE-LEVEL READY (trivially) | No environment is used or referenced anywhere in this repository. |
-| No GitHub Pages configuration exists that is not actively populated by a current workflow | FILE-LEVEL READY (trivially) | No Pages configuration, no Pages-deploying workflow. |
-| Documentation describes what is *actually* live in GitHub configuration | FILE-LEVEL READY, with an explicit caveat | Every doc in this repository describes the *intended* configuration (this repository does not exist on GitHub yet). Once created and configured, this file and `docs/*.md` must be re-checked against the real, live settings — a discrepancy discovered then is a defect to resolve, not left standing (see the baseline's own rule on this point). |
+| No GitHub Environment exists that is not referenced by a current workflow | VERIFIED LIVE (trivially) | No environment was created by provisioning; none is used or referenced anywhere in this repository. |
+| No GitHub Pages configuration exists that is not actively populated by a current workflow | VERIFIED LIVE (trivially) | No Pages configuration exists on the live repository; no Pages-deploying workflow. |
+| Documentation describes what is *actually* live in GitHub configuration | VERIFIED LIVE | Every "VERIFIED LIVE" row above was independently re-read from the GitHub API after real provisioning, not inferred from the provisioner's own report — resolving the caveat this row previously carried. |
 
 ## Documentation
 
@@ -81,13 +88,24 @@ repository of this kind.
 
 ## What this reveals
 
-Every "EXTERNAL GITHUB SETUP REQUIRED" row above is now closable by
+Every row above that once read "EXTERNAL GITHUB SETUP REQUIRED" is now
+**VERIFIED LIVE**, closed by
 **`commands/provision-repository.ps1 -Profile repository-baseline`** —
-this repository is provisioned against `profiles/repository-baseline.json`
-(CDA Repository Baseline v1, alone, as an executable projection of the
-standard — see [docs/profiles.md](docs/profiles.md), "Three concepts, not
-one"), **not** a kind-specific profile. `commands/provision-npm-library.ps1`
-does not apply here and is not used for this repository.
+this repository was provisioned for real against
+`profiles/repository-baseline.json` (CDA Repository Baseline v1, alone, as
+an executable projection of the standard — see
+[docs/profiles.md](docs/profiles.md), "Three concepts, not one"), **not** a
+kind-specific profile. `commands/provision-npm-library.ps1` does not apply
+here and was not used for this repository.
+
+This self-hosting run also surfaced and fixed one real bug that no prior
+test had exercised: `Invoke-Provisioning` read a profile's `npm` section
+unconditionally, which crashed against a baseline-only profile (one with no
+`npm` section, by design). Caught live by this repository's own `-DryRun`
+before any mutation happened, fixed, covered by a new regression test, and
+landed through the normal PR flow (PR #1) — the exact "reproduce → test →
+fix → suite green" discipline this tooling requires of everyone else,
+applied to itself.
 
 A future **CDA Tooling/CLI Profile** remains a concrete, but still
 undefined, candidate: this baseline-only run may eventually surface real,
@@ -103,15 +121,13 @@ baseline alone.
 | Category | Result |
 |---|---|
 | FILE-LEVEL READY | PASS |
-| BASELINE PROVISIONING SUPPORT | PASS -- `profiles/repository-baseline.json` + `commands/provision-repository.ps1` implement CDA Repository Baseline v1 alone, composition-verified against `profiles/npm-library.json`'s unchanged effective state (487/487 local tests) |
-| EXTERNAL GITHUB SETUP | PENDING -- this repository has not yet been created as `Continuous-DrivenArchitecture/tool-repository-lifecycle` on GitHub |
+| BASELINE PROVISIONING SUPPORT | PASS -- `profiles/repository-baseline.json` + `commands/provision-repository.ps1` implement CDA Repository Baseline v1 alone, composition-verified against `profiles/npm-library.json`'s unchanged effective state (489/489 local tests) |
+| EXTERNAL GITHUB SETUP | PASS -- verified live against `Continuous-DrivenArchitecture/tool-repository-lifecycle` by independently re-reading every setting from the GitHub API after real provisioning |
+| CDA Repository Standard v1 | PASS -- every MUST-level baseline requirement is VERIFIED LIVE; the sole open item, `-Mode Verify` MAY-level rows (CodeQL default setup, dependency-review enforcement workflow), are correctly reported as SKIP/NOT AVAILABLE, never silently required |
 | CDA npm Library Profile v1 | NOT APPLICABLE -- this repository is not an npm library |
-| CDA Tooling/CLI Profile | NOT DEFINED -- evidence first, per "What this reveals" above |
+| CDA Tooling/CLI Profile | NOT DEFINED -- evidence first, per "What this reveals" above; this repository's own real operating history under the baseline alone (recorded here) is exactly the evidence that future decision would draw on |
 
-**Full CDA Repository Standard compliance is not claimed here.** This
-document records file-level readiness and the tooling's own capability to
-provision the baseline; it explicitly does NOT claim external GitHub-side
-compliance, which requires the repository to actually exist and be
-provisioned for real. This document is updated again, from live,
-independently-verified evidence, once that happens — see the task that
-publishes and self-hosts this repository.
+This document was updated from live, independently-verified GitHub state
+via a short-lived branch (`docs/record-live-compliance`), merged through
+the same PR + `ci-required` + Protect main flow it documents — not written
+speculatively and not pushed directly to `main`.
