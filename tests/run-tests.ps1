@@ -127,7 +127,11 @@ $expectedExports = @('Get-ReadOnlyGitHubPaged', 'Invoke-ReadOnlyGitHub', 'Test-G
 Assert-True -Name 'ReadOnlyGitHub exports exactly the 3 expected read-only functions, nothing else' -Condition (@(Compare-Object $exported $expectedExports).Count -eq 0) -Detail "(actual: $($exported -join ', '))"
 
 $invokeCmd = Get-Command Invoke-ReadOnlyGitHub
-$paramNames = @($invokeCmd.Parameters.Keys | Where-Object { $_ -notin @('Verbose', 'Debug', 'ErrorAction', 'WarningAction', 'InformationAction', 'ErrorVariable', 'WarningVariable', 'InformationVariable', 'OutVariable', 'OutBuffer', 'PipelineVariable') })
+# 'ProgressAction' is a PowerShell 7.4+-only common parameter (absent in
+# Windows PowerShell 5.1) -- excluded here alongside the others so this
+# assertion means the same thing on both PowerShell versions this suite
+# is validated against (see CI: validate-powershell51 vs validate-pwsh).
+$paramNames = @($invokeCmd.Parameters.Keys | Where-Object { $_ -notin @('Verbose', 'Debug', 'ErrorAction', 'WarningAction', 'InformationAction', 'ErrorVariable', 'WarningVariable', 'InformationVariable', 'OutVariable', 'OutBuffer', 'PipelineVariable', 'ProgressAction') })
 Assert-True -Name 'Invoke-ReadOnlyGitHub has no -Method parameter' -Condition ($paramNames -notcontains 'Method')
 Assert-True -Name 'Invoke-ReadOnlyGitHub has no -BodyObject / body-carrying parameter' -Condition ($paramNames -notcontains 'BodyObject' -and $paramNames -notcontains 'Body')
 Assert-True -Name 'Invoke-ReadOnlyGitHub accepts only -Path' -Condition (@(Compare-Object $paramNames @('Path')).Count -eq 0) -Detail "(actual params: $($paramNames -join ', '))"
@@ -1037,7 +1041,14 @@ Write-Host "18d. Content reference branch: package.json / release config / workf
 $discoverySource = Get-Content -LiteralPath (Join-Path $adopterLib 'Discovery.psm1') -Raw
 Assert-True -Name 'Get-PackageJsonInfo no longer tries an implicit-default-branch read before its own -Ref (the silently-ignored-Ref bug)' -Condition ($discoverySource -notmatch 'Get-WorkflowFileText -Owner \$Owner -Repo \$Repo -Path "package\.json"\s*\r?\n\s*if \(\$null -eq \$text\)')
 Assert-True -Name 'Get-PackageJsonInfo always passes its own -Ref through to Get-WorkflowFileText' -Condition ($discoverySource -match 'Get-WorkflowFileText -Owner \$Owner -Repo \$Repo -Path "package\.json" -Ref \$Ref')
-Assert-True -Name 'Get-ReleaseConfigText now requires and honors -Ref' -Condition ($discoverySource -match 'function Get-ReleaseConfigText \{[\s\S]{0,400}Mandatory\)\] \[string\]\$Ref')
+# {0,500}, not {0,400}: measured locally at 393 chars with LF line
+# endings (only 7 bytes of margin) -- a CRLF checkout (e.g. GitHub
+# Actions' Windows runners, which convert LF blobs to CRLF on checkout)
+# adds one extra byte per embedded newline in this span (8 of them),
+# pushing it to 401 and failing this exact assertion in CI while it
+# passed locally. Confirmed empirically, not assumed -- this is a real,
+# CI-only failure this task's own bootstrap process caught and fixed.
+Assert-True -Name 'Get-ReleaseConfigText now requires and honors -Ref' -Condition ($discoverySource -match 'function Get-ReleaseConfigText \{[\s\S]{0,500}Mandatory\)\] \[string\]\$Ref')
 Assert-True -Name 'Get-WorkflowsInventory accepts -Ref and threads it into both the directory listing and each file read' -Condition ($discoverySource -match 'function Get-WorkflowsInventory \{[\s\S]{0,1200}\[string\]\$Ref')
 
 Assert-True -Name 'assess-npm-library.ps1 resolves $contentRef (main, then master, else live default) before any content read' -Condition ($assessSourceForBlockerCheck -match "contentRef = if \(\`$branchNamesEarly -contains 'main'\)")
