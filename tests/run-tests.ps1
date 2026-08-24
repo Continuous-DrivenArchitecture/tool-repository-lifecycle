@@ -2080,8 +2080,18 @@ foreach ($f in $allSourceFiles) {
 }
 Assert-True -Name 'no source file contains an absolute local path, a live token shape, or a known production identity' -Condition ($sensitiveHits.Count -eq 0) -Detail ($sensitiveHits -join '; ')
 
-$reportsFoldersPresent = @(Get-ChildItem -Path $root -Recurse -Directory -Filter 'reports' -ErrorAction SilentlyContinue | Where-Object { $_.FullName -notmatch '\\tests\\fixtures' })
-Assert-True -Name 'no committed reports/ directory exists in this repository (production evidence lives only in the workspace, never here)' -Condition ($reportsFoldersPresent.Count -eq 0) -Detail (($reportsFoldersPresent | ForEach-Object { $_.FullName }) -join '; ')
+# Checks git's own TRACKED-file list, not raw filesystem existence -- a
+# local, gitignored reports/ directory is expected and correct (see
+# docs/artifact-model.md, "Report output location"); what must never
+# happen is one of its files becoming TRACKED (committed).
+$reportsTrackedFiles = @()
+if (Test-Path -LiteralPath (Join-Path $root '.git')) {
+    $gitOutput = & git -C $root ls-files 2>&1
+    if ($LASTEXITCODE -eq 0) {
+        $reportsTrackedFiles = @($gitOutput | Where-Object { $_ -match '^reports/' })
+    }
+}
+Assert-True -Name 'no reports/ file is tracked by git (production evidence lives only in the gitignored local workspace, never committed)' -Condition ($reportsTrackedFiles.Count -eq 0) -Detail ($reportsTrackedFiles -join '; ')
 
 # ---------------------------------------------------------------------------
 Write-Host ""

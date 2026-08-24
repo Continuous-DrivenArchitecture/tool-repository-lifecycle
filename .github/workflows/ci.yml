@@ -22,11 +22,20 @@ jobs:
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - name: Run test suite (powershell.exe / Windows PowerShell 5.1)
-        shell: powershell
-        run: |
-          $ErrorActionPreference = 'Stop'
-          .\tests\run-tests.ps1
-          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+        # `shell: powershell` wraps this run: block in a temp .ps1 file
+        # invoked via `powershell -Command ". 'temp.ps1'"` -- DOT-SOURCED
+        # into the runner's own scope, not a fresh process. This suite's
+        # nested-module import order (documented at length in its own
+        # header and in CONTRIBUTING.md) depends on module-scope
+        # boundaries that behave differently under a dot-sourced caller
+        # than under a normal script invocation -- confirmed empirically
+        # (this exact test suite passed 487/487 locally via a normal
+        # `powershell.exe -File` invocation, then failed a cluster of
+        # mocked-API tests here). Spawning tests/run-tests.ps1 as its own
+        # genuinely separate process (-File, not dot-sourced, not `.\`)
+        # sidesteps the difference entirely.
+        shell: cmd
+        run: powershell.exe -NoProfile -File tests\run-tests.ps1
 
   # Modern PowerShell (pwsh, PowerShell 7+), same Windows runner -- this
   # tooling's path handling ('lib\Sub.psm1'-style literal backslash
@@ -40,11 +49,11 @@ jobs:
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - name: Run test suite (pwsh)
-        shell: pwsh
-        run: |
-          $ErrorActionPreference = 'Stop'
-          ./tests/run-tests.ps1
-          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+        # Same reasoning as the Windows PowerShell 5.1 job above: spawn a
+        # genuinely fresh pwsh process (-File) rather than relying on
+        # `shell: pwsh`'s own dot-sourced temp-file wrapper.
+        shell: cmd
+        run: pwsh -NoProfile -File tests\run-tests.ps1
 
   # Stable, matrix-independent summary job -- the ONE job name any future
   # branch-protection ruleset for this repository should require, per
