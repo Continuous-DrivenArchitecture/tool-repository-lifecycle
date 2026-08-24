@@ -416,13 +416,25 @@ function Invoke-Provisioning {
     $plan += Get-ActionsPlan -Desired $CdaProfile.actions -Mode $Mode -DryRun $DryRun -Owner $owner -Repo $repo
     $plan += Get-SecurityPlan -RepoData $repoData -Desired $CdaProfile.security -Languages $languages -Mode $Mode -DryRun $DryRun -Owner $owner -Repo $repo
     $plan += Get-RulesetPlan -CdaProfile $CdaProfile -DefaultBranch $repoData.default_branch -Mode $Mode -DryRun $DryRun -Owner $owner -Repo $repo
-    $plan += [PSCustomObject]@{
-        Capability = 'npm Trusted Publisher'
-        Current    = '<not managed>'
-        Desired    = $CdaProfile.npm.trustedPublisher
-        Action     = 'SKIP'
-        Result     = 'NOT AVAILABLE'
-        Notes      = 'Out of scope for this provisioner version  -  see runbooks/setup-repository.md, Section B5.'
+    # `npm` is entirely absent from a baseline-only profile (see
+    # profiles/repository-baseline.json -- it is explicitly out of the
+    # CDA Repository Baseline's own scope) and present only on a profile
+    # that extends it for npm-library-shaped repositories (profiles/npm-
+    # library.json). Reading $CdaProfile.npm.trustedPublisher
+    # unconditionally used to throw a PropertyNotFoundException under
+    # strict mode against a baseline-only profile -- confirmed live, not
+    # assumed, during this repository's own real self-provisioning
+    # Bootstrap run. This row is only ever added when the profile
+    # actually has something to say about npm publishing.
+    if ($CdaProfile.PSObject.Properties['npm']) {
+        $plan += [PSCustomObject]@{
+            Capability = 'npm Trusted Publisher'
+            Current    = '<not managed>'
+            Desired    = $CdaProfile.npm.trustedPublisher
+            Action     = 'SKIP'
+            Result     = 'NOT AVAILABLE'
+            Notes      = 'Out of scope for this provisioner version  -  see runbooks/setup-repository.md, Section B5.'
+        }
     }
 
     $exitCode = Get-ProvisioningExitCode -Plan $plan -Mode $Mode -DryRun $DryRun

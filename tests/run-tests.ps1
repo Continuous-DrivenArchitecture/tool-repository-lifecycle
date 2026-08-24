@@ -2297,6 +2297,17 @@ $orchestrationSource = Get-Content -LiteralPath (Join-Path $provisionerLib 'Orch
 Assert-True -Name 'Orchestration.psm1: Get-RulesetPlan reads the required-check context from the profile parameter, never a hardcoded literal' -Condition ($orchestrationSource -match 'New-DesiredRulesetBody -CdaProfile \$CdaProfile')
 Assert-True -Name 'Orchestration.psm1: Get-SecurityPlan reads CodeQL applicable/setup languages from the profile parameter, never a hardcoded JavaScript/TypeScript literal' -Condition ($orchestrationSource -match '\$Desired\.codeQLDefaultSetup\.applicableLanguages' -and $orchestrationSource -notmatch "'JavaScript'|'TypeScript'")
 Assert-True -Name 'Orchestration.psm1: Get-ActionsPlan reads the allowed-actions policy from the profile parameter, never hardcoded' -Condition ($orchestrationSource -match '\$Desired\.allowedActionsPolicy')
+
+# REGRESSION (found live during this repository's own real self-
+# provisioning Bootstrap run against a baseline-only profile):
+# Invoke-Provisioning used to read $CdaProfile.npm.trustedPublisher
+# UNCONDITIONALLY, throwing PropertyNotFoundException under strict mode
+# for any profile without an `npm` section (every baseline-only profile,
+# by design -- see profiles/repository-baseline.json). This is exactly
+# what -Profile npm-library-only-safe hardcoding would have looked like;
+# never actually exercised until the real self-hosting run reached it.
+Assert-True -Name 'Orchestration.psm1: the npm Trusted Publisher plan row is only added when the profile actually HAS an npm section (never assumed present)' -Condition ($orchestrationSource -match "if \(\`$CdaProfile\.PSObject\.Properties\['npm'\]\)")
+Assert-True -Name 'repository-baseline.json''s effective profile genuinely has no npm section (the exact condition that exposed the regression above)' -Condition (-not $baselineEffective.Profile.PSObject.Properties['npm'])
 Assert-True -Name 'Invoke-Provisioning''s own Mode/DryRun/-CdaProfile signature accepts any profile object, not a specific one' -Condition ((Get-Command Invoke-Provisioning).Parameters.Keys -contains 'CdaProfile')
 
 # Confirms Bootstrap's own fail-safe (never require a check with no
