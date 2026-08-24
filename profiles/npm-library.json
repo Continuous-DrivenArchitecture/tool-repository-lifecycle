@@ -1,0 +1,18 @@
+{
+  "schemaVersion": "1.0",
+  "profileName": "cda-npm-library-v1",
+  "extends": "repository-baseline",
+  "description": "GitHub-side desired state for a repository implementing CDA Repository Baseline v1 + CDA npm Library Profile v1. This file is an OVERLAY on profiles/repository-baseline.json (see 'extends'), not a duplicate of it -- every field the npm Library Profile does not need to change from the baseline (repository settings, Actions permissions, core ruleset shape, secret-scanning/push-protection/vulnerability-alert toggles) is inherited unchanged; only this profile's own genuinely npm/JS-specific additions are declared here (CodeQL's applicable languages, and the npm publishing note). Package/build systems, workflow file contents, and other repository files belong to a template (e.g. template-npm-library), not to this profile. See docs/profiles.md and src/common/profile/ProfileLoader.psm1's Get-EffectiveCdaProfile for how this overlay is resolved.",
+
+  "security": {
+    "codeQLDefaultSetup": {
+      "applicableLanguages": ["JavaScript", "TypeScript"],
+      "setupLanguages": ["javascript-typescript", "actions"],
+      "querySuite": "default"
+    }
+  },
+
+  "npm": {
+    "trustedPublisher": "EXTERNAL SETUP REQUIRED - not managed by this provisioner version"
+  }
+}

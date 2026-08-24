@@ -1,0 +1,97 @@
+{
+  "schemaVersion": "1.0",
+  "profileName": "cda-repository-baseline-v1",
+  "description": "GitHub-side desired state for CDA Repository Baseline v1 ALONE -- every field here is derived directly from docs/standards/cda-repository-baseline-v1.md (see standards/README.md for its canonical location). This is NOT a new CDA profile: it is an executable, machine-readable projection of the baseline standard's own MUST/SHOULD rules, for repositories that implement no additional kind-specific profile (npm library, web application, ...) on top of it. Contains NO package/build, release/publish, or language-runtime-specific requirements -- those are explicitly out of scope for the baseline itself (see the standard's own 'Scope' section) and belong only in a profile that extends this one (e.g. profiles/npm-library.json).",
+
+  "normativeLevels": {
+    "repositorySettings.defaultBranch": "MUST",
+    "repositorySettings.deleteBranchOnMerge": "MUST",
+    "repositorySettings.allowSquashMerge": "MUST",
+    "repositorySettings.allowMergeCommit": "MUST",
+    "repositorySettings.allowRebaseMerge": "MUST",
+    "repositorySettings.allowAutoMerge": "MAY (not addressed by the baseline; left disabled as the conservative default)",
+    "actions.enabled": "MUST (implicit -- Actions must be usable for the required-checks contract to exist at all)",
+    "actions.defaultWorkflowPermissions": "MUST",
+    "actions.allowedActionsPolicy": "SHOULD -- this profile adopts the SHOULD-level recommendation ('selected') as its own concrete default; a repository MAY justify 'all' with a documented exception, but this baseline profile does not default to it",
+    "actions.selectedActions": "SHOULD (follows from allowedActionsPolicy; derived per-repository from the ACTUAL workflow inventory -- see docs/lifecycle.md and Section 7 of this profile's own governing task, never copied from another repository)",
+    "actions.shaPinningRequired": "SHOULD (the repository/organization SETTING) -- the underlying SHA-pinning of third-party Actions in workflow files is MUST; see repository hygiene / Actions supply-chain policy in the standard",
+    "security.vulnerabilityAlerts": "MUST",
+    "security.secretScanning": "MUST",
+    "security.secretScanningPushProtection": "MUST",
+    "security.dependabotSecurityUpdates": "MUST (Dependabot security alerts)",
+    "security.codeQLDefaultSetup": "MAY -- optional, language-dependent (CodeQL Actions supply-chain policy); the baseline itself names no applicable language, so this profile leaves it empty. A profile for a CodeQL-supported language (e.g. the npm Library Profile, for JavaScript/TypeScript) adopts it explicitly as its own overlay.",
+    "security.dependencyReview": "SHOULD -- informational; no bare API toggle exists (see the note field)",
+    "ruleset.enforcement": "MUST (the ruleset itself, and its enforcement=active state)",
+    "ruleset.bypassActors": "MUST be empty by default",
+    "ruleset.pullRequest.requiredApprovingReviewCount": "SHOULD >=1 for 2+ maintainers; MAY be 0 for a documented single-maintainer repository (see the note field) -- never a silent default, always an explicit, revisitable exception",
+    "ruleset.pullRequest.requireCodeOwnerReview": "SHOULD once a repository has 2+ maintainers or defined subject-matter areas; MAY be omitted for a single maintainer",
+    "ruleset.pullRequest.requiredReviewThreadResolution": "MUST",
+    "ruleset.pullRequest.allowedMergeMethods": "MUST squash-only",
+    "ruleset.requiredStatusChecks": "MUST (a required-checks contract exists and is enforced); the CONCRETE check name is defined per profile/repository, never mandated by the baseline itself -- this profile instantiates 'ci-required' as its own stable, matrix-independent job name, per the baseline's own required-checks-contract guidance",
+    "ruleset.requiredStatusChecks.strict": "MUST",
+    "ruleset.nonFastForward": "MUST (force-push blocked)",
+    "ruleset.deletion": "MUST (branch deletion blocked)",
+    "dependencyAutomation": "MUST -- Dependabot version updates enabled for every applicable ecosystem, target-branch=main, security alerts enabled (see .github/dependabot.yml; not itself a field in this JSON profile, since it is a repository FILE, not a GitHub setting)"
+  },
+
+  "repositorySettings": {
+    "defaultBranch": "main",
+    "deleteBranchOnMerge": true,
+    "allowSquashMerge": true,
+    "allowMergeCommit": false,
+    "allowRebaseMerge": false,
+    "allowAutoMerge": false
+  },
+
+  "actions": {
+    "enabled": true,
+    "defaultWorkflowPermissions": "read",
+    "canApprovePullRequestReviews": false,
+    "allowedActionsPolicy": "selected",
+    "selectedActions": {
+      "githubOwnedAllowed": true,
+      "verifiedAllowed": false,
+      "patternsAllowed": []
+    },
+    "shaPinningRequired": true,
+    "knownGitHubOwnedActionOwners": ["actions", "github"]
+  },
+
+  "security": {
+    "vulnerabilityAlerts": true,
+    "secretScanning": "enabled",
+    "secretScanningPushProtection": "enabled",
+    "dependabotSecurityUpdates": "enabled",
+    "codeQLDefaultSetup": {
+      "applicableLanguages": [],
+      "setupLanguages": [],
+      "querySuite": "default",
+      "note": "Empty at the pure-baseline level -- CodeQL is MAY-level and language-dependent per the standard's Actions supply-chain policy. A repository whose language(s) CodeQL supports well should be covered by a profile that extends this baseline and names those languages explicitly (see profiles/npm-library.json), not by this baseline guessing a language."
+    },
+    "dependencyReview": {
+      "note": "The dependency-review PR diff is automatic on public repositories via the dependency graph -- there is no bare API toggle for it. Enforcement via the dependency-review-action workflow is NOT managed by this provisioner version; it is reported separately and never auto-added."
+    }
+  },
+
+  "ruleset": {
+    "name": "Protect main",
+    "target": "branch",
+    "refInclude": ["~DEFAULT_BRANCH"],
+    "enforcement": "active",
+    "bypassActors": [],
+    "pullRequest": {
+      "requiredApprovingReviewCount": 0,
+      "requiredApprovingReviewCountNote": "0 is the documented single-maintainer bootstrap default per CDA Repository Baseline v1, 'Pull requests'. A repository with 2+ maintainers MUST raise this manually -- this provisioner does not infer maintainer count and will not do so automatically.",
+      "requireCodeOwnerReview": false,
+      "requiredReviewThreadResolution": true,
+      "allowedMergeMethods": ["squash"]
+    },
+    "requiredStatusChecks": {
+      "context": "ci-required",
+      "strict": true,
+      "note": "This baseline profile's own stable, matrix-independent required-check job name (see .github/workflows/ci.yml's 'ci-required' summary job). The CDA Repository Baseline v1 standard itself does not mandate this literal name -- it requires ONLY that a required-checks contract exist and be enforced, with a stable (not matrix-leg-dependent) name preferred. This profile instantiates that requirement concretely. This rule is intentionally absent from the ruleset during Bootstrap if the check has no execution evidence yet, and is added only by Finalize once evidence exists."
+    },
+    "nonFastForward": true,
+    "deletion": true
+  }
+}

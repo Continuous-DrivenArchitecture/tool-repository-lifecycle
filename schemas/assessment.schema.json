@@ -1,0 +1,143 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://continuous-drivenarchitecture.example/schemas/assessment.schema.json",
+  "title": "CDA Assessment",
+  "description": "Machine-readable output of commands/assess-npm-library.ps1 (ConvertTo-AdoptionJsonReport in src/adopter/lib/AdoptionPlan.psm1). Read-only -- produced by the EXISTING-repository lifecycle path's ASSESS step. Describes the actual implementation; fields are added here only once they exist in a real assessment.",
+  "type": "object",
+  "required": ["schemaVersion", "repository", "profile", "assessedAt", "stateFingerprint", "capabilities", "blockers", "plan", "fullCdaCompliance"],
+  "properties": {
+    "schemaVersion": { "type": "string", "const": "1.0" },
+    "repository": { "type": "string", "pattern": "^[A-Za-z0-9][A-Za-z0-9-]*/[A-Za-z0-9._-]+$" },
+    "profile": { "type": "string" },
+    "assessedAt": { "type": "string" },
+    "stateFingerprint": {
+      "type": "object",
+      "description": "Snapshot of live state at assessment time -- what commands/apply-plan.ps1's pre-flight re-reads and compares against before ever mutating anything (stale-plan protection). Property names are PascalCase because this object is carried through from PowerShell's own state-fingerprint model unchanged, unlike the other camelCase fields in this document.",
+      "required": ["CapturedAt", "DefaultBranch"],
+      "properties": {
+        "CapturedAt": { "type": "string" },
+        "DefaultBranch": { "type": "string" },
+        "DefaultBranchSha": { "type": ["string", "null"] },
+        "MainSha": { "type": ["string", "null"] },
+        "DevelopSha": { "type": ["string", "null"] },
+        "Rulesets": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "Id": {},
+              "Name": { "type": "string" },
+              "UpdatedAt": { "type": ["string", "null"] }
+            }
+          }
+        },
+        "WorkflowShas": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": { "File": { "type": "string" }, "Sha": { "type": "string" } }
+          }
+        },
+        "ReleaseConfigFile": { "type": ["string", "null"] },
+        "ReleaseConfigSha": { "type": ["string", "null"] },
+        "PackageJsonSha": { "type": ["string", "null"] },
+        "ActionsPermissions": {
+          "type": ["object", "null"],
+          "properties": {
+            "Enabled": { "type": ["boolean", "null"] },
+            "AllowedActionsPolicy": { "type": ["string", "null"] },
+            "ShaPinningRequired": { "type": ["boolean", "null"] }
+          }
+        },
+        "DevelopRetirementEvidence": {
+          "type": ["object", "null"],
+          "description": "Compact snapshot of branch-retirement evidence, only present when 'develop' has graph-exclusive commits at assessment time -- see docs/safety-model.md, 'Branch retirement evidence'.",
+          "properties": {
+            "BranchHeadSha": { "type": "string" },
+            "TargetHeadSha": { "type": "string" },
+            "MergeBaseSha": { "type": "string" },
+            "BranchHeadTreeSha": { "type": "string" },
+            "ContentUniqueToBranch": { "type": ["boolean", "null"] },
+            "SemanticEquivalenceProven": { "type": ["boolean", "null"] }
+          }
+        }
+      }
+    },
+    "capabilities": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/capabilityRow" }
+    },
+    "blockers": { "type": "array", "items": { "type": "string" } },
+    "plan": {
+      "type": "array",
+      "description": "Structurally identical to adoption-plan.schema.json's top-level array (see that schema) -- defined locally here rather than via a cross-file $ref, to keep this schema self-contained for validators that only resolve same-document references.",
+      "items": { "$ref": "#/$defs/planPhase" }
+    },
+    "fullCdaCompliance": {
+      "type": "object",
+      "description": "See docs/safety-model.md / docs/artifact-model.md, 'Capability model': the corrected FullCdaCompliance formula -- never derived from the profile capability count alone.",
+      "required": ["Result", "ProfileCompliance", "BaselineHygieneCompliance", "RemainingGaps"],
+      "properties": {
+        "Result": { "type": "string", "enum": ["PASS", "PARTIAL", "BLOCKED"] },
+        "ProfileCompliance": { "type": "boolean" },
+        "BaselineHygieneCompliance": { "type": "boolean" },
+        "ProfileRowCount": { "type": "integer" },
+        "BaselineHygieneRowCount": { "type": "integer" },
+        "RemainingGaps": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "Capability": { "type": "string" },
+              "Classification": { "$ref": "#/$defs/classification" },
+              "Category": { "type": "string", "enum": ["Profile", "BaselineHygiene"] }
+            }
+          }
+        }
+      }
+    }
+  },
+  "$defs": {
+    "classification": {
+      "type": "string",
+      "enum": ["COMPLIANT", "SAFE_CHANGE", "REVIEW_REQUIRED", "BLOCKED", "KEEP_STRONGER", "REMOVE_CANDIDATE", "NOT_AVAILABLE", "UNKNOWN"]
+    },
+    "capabilityRow": {
+      "type": "object",
+      "required": ["id", "name", "classification", "requiresManualChange", "destructive"],
+      "properties": {
+        "id": { "type": "string" },
+        "name": { "type": "string" },
+        "current": { "type": "string" },
+        "target": { "type": "string" },
+        "classification": { "$ref": "#/$defs/classification" },
+        "rationale": { "type": "string" },
+        "requiresManualChange": { "type": "boolean" },
+        "destructive": { "type": "boolean" }
+      }
+    },
+    "planItem": {
+      "type": "object",
+      "required": ["id", "capability", "classification", "requiresManualChange", "destructive"],
+      "properties": {
+        "id": { "type": "string" },
+        "capability": { "type": "string" },
+        "current": { "type": "string" },
+        "target": { "type": "string" },
+        "classification": { "$ref": "#/$defs/classification" },
+        "rationale": { "type": "string" },
+        "requiresManualChange": { "type": "boolean" },
+        "destructive": { "type": "boolean" }
+      }
+    },
+    "planPhase": {
+      "type": "object",
+      "required": ["phase", "name", "items"],
+      "properties": {
+        "phase": { "type": "integer", "minimum": 0, "maximum": 7 },
+        "name": { "type": "string" },
+        "items": { "type": "array", "items": { "$ref": "#/$defs/planItem" } }
+      }
+    }
+  }
+}

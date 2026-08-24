@@ -1,0 +1,37 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://continuous-drivenarchitecture.example/schemas/adoption-plan.schema.json",
+  "title": "CDA AdoptionPlan",
+  "description": "The phased plan produced by src/adopter/lib/AdoptionPlan.psm1's New-AdoptionPlan, as it appears embedded in an Assessment's own `plan` field (see assessment.schema.json). Nothing described by this document is ever executed automatically -- it is read-only output; execution requires the separate approve -> approved-plan -> apply lifecycle (approved-plan.schema.json, apply-report.schema.json).",
+  "type": "array",
+  "items": { "$ref": "#/$defs/planPhase" },
+  "$defs": {
+    "classification": {
+      "type": "string",
+      "enum": ["COMPLIANT", "SAFE_CHANGE", "REVIEW_REQUIRED", "BLOCKED", "KEEP_STRONGER", "REMOVE_CANDIDATE", "NOT_AVAILABLE", "UNKNOWN"]
+    },
+    "planItem": {
+      "type": "object",
+      "required": ["id", "capability", "classification", "requiresManualChange", "destructive"],
+      "properties": {
+        "id": { "type": "string", "description": "Stable operation id (see docs/artifact-model.md, 'Operation model'), e.g. repo.defaultBranch, ruleset.bypassActors, branch.delete.develop, hygiene.pages." },
+        "capability": { "type": "string" },
+        "current": { "type": "string" },
+        "target": { "type": "string" },
+        "classification": { "$ref": "#/$defs/classification" },
+        "rationale": { "type": "string" },
+        "requiresManualChange": { "type": "boolean", "description": "true means this is a repository FILE change (a workflow/config edit) -- Apply can never execute it, only report it as pending manual work." },
+        "destructive": { "type": "boolean", "description": "Independent safety property (see docs/safety-model.md, 'Destructive operations registry') -- true means this operation can never be approved via a bulk safe-changes sweep, regardless of its classification." }
+      }
+    },
+    "planPhase": {
+      "type": "object",
+      "required": ["phase", "name", "items"],
+      "properties": {
+        "phase": { "type": "integer", "minimum": 0, "maximum": 7, "description": "0=Blockers/prerequisites, 1=Hygiene/safe settings, 2=CI normalization, 3=Branching migration, 4=Release architecture migration, 5=Security hardening, 6=Cleanup legacy configuration, 7=Final verification." },
+        "name": { "type": "string" },
+        "items": { "type": "array", "items": { "$ref": "#/$defs/planItem" } }
+      }
+    }
+  }
+}

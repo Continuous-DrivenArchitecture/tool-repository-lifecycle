@@ -1,0 +1,91 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://continuous-drivenarchitecture.example/schemas/apply-report.schema.json",
+  "title": "CDA ApplyReport",
+  "description": "Output of commands/apply-plan.ps1 (New-ApplyReport). Produced for BOTH -DryRun (dryRun=true, zero mutations, verification=null) and real apply runs. Deliberately distinguishes 'PLAN APPLIED SUCCESSFULLY' (verification.planApplied -- did every approved operation apply and read back as matching) from 'FULL CDA COMPLIANCE' (verification.fullCdaCompliance -- an independent, fresh, full re-assessment) -- see docs/safety-model.md, 'Read-back verification'. A plan can satisfy the first and not the second.",
+  "type": "object",
+  "required": ["schemaVersion", "repository", "approvedPlanHash", "approvedBy", "approvedAt", "appliedAt", "dryRun", "preflightPassed", "preflightChecks", "operationsRequested", "operationsSummary", "operations", "mutationsPerformed"],
+  "properties": {
+    "schemaVersion": { "type": "string", "const": "1.0" },
+    "repository": { "type": "string" },
+    "approvedPlanHash": { "type": "string", "pattern": "^[0-9a-f]{64}$" },
+    "approvedBy": { "type": "string" },
+    "approvedAt": { "type": "string" },
+    "appliedAt": { "type": "string" },
+    "dryRun": { "type": "boolean" },
+    "preflightPassed": {
+      "type": "boolean",
+      "description": "Zero-mutation gate (src/adopter/lib/Apply.psm1's Invoke-Preflight). If false, the mutation phase never ran at all -- operations/operationsSummary reflect nothing attempted."
+    },
+    "preflightChecks": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["Name", "Passed"],
+        "properties": {
+          "Name": { "type": "string" },
+          "Passed": { "type": "boolean" },
+          "Detail": { "type": "string" }
+        }
+      }
+    },
+    "operationsRequested": { "type": "integer", "minimum": 0 },
+    "operationsSummary": {
+      "type": "object",
+      "required": ["applied", "wouldApply", "failed", "notExecuted", "manualChangeRequired"],
+      "properties": {
+        "applied": { "type": "integer" },
+        "wouldApply": { "type": "integer" },
+        "failed": { "type": "integer" },
+        "notExecuted": { "type": "integer" },
+        "manualChangeRequired": { "type": "integer" }
+      }
+    },
+    "operations": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["id", "capability", "status", "detail"],
+        "properties": {
+          "id": { "type": "string" },
+          "capability": { "type": "string" },
+          "status": { "type": "string", "enum": ["APPLIED", "WOULD_APPLY", "FAILED", "NOT_EXECUTED", "MANUAL_CHANGE_REQUIRED"] },
+          "detail": { "type": "string" }
+        }
+      }
+    },
+    "verification": {
+      "type": ["object", "null"],
+      "description": "null under -DryRun (nothing was applied, so nothing to read back or fully re-assess).",
+      "properties": {
+        "readBack": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "Id": { "type": "string" },
+              "Observed": {},
+              "Matches": { "type": ["boolean", "null"], "description": "null means UNVERIFIABLE -- this operation id has no read-back mapping, or the live re-read itself failed. Never silently treated as success." }
+            }
+          }
+        },
+        "planApplied": { "type": "boolean" },
+        "fullCdaCompliance": {
+          "type": "object",
+          "properties": {
+            "Available": { "type": "boolean" },
+            "FullyCompliant": { "type": ["boolean", "null"] },
+            "Gaps": { "type": "array", "items": { "type": "object" } },
+            "ReassessedAt": { "type": "string" },
+            "Error": { "type": ["string", "null"] }
+          }
+        }
+      }
+    },
+    "mutationsPerformed": {
+      "type": "array",
+      "items": { "type": "string" },
+      "description": "One human-readable line per operation that actually reached status APPLIED. Empty under -DryRun, by construction."
+    }
+  }
+}

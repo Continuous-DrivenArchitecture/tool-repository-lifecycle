@@ -1,0 +1,67 @@
+name: CI
+
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  # Windows PowerShell 5.1 -- the compatibility floor this tooling targets
+  # (see CONTRIBUTING.md, "PowerShell compatibility"). tests/run-tests.ps1
+  # itself covers: PowerShell syntax for every script/module, JSON parsing
+  # (profile + every synthetic fixture), JSON Schema validation against
+  # schemas/*.json, the read-only/mutation structural boundary check, and
+  # every unit/regression assertion for both lifecycle paths.
+  validate-powershell51:
+    name: Validate (Windows PowerShell 5.1)
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: Run test suite (powershell.exe / Windows PowerShell 5.1)
+        shell: powershell
+        run: |
+          $ErrorActionPreference = 'Stop'
+          .\tests\run-tests.ps1
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
+  # Modern PowerShell (pwsh, PowerShell 7+), same Windows runner -- this
+  # tooling's path handling ('lib\Sub.psm1'-style literal backslash
+  # segments, matching every script's own established convention) is not
+  # yet slash-agnostic, so "modern PowerShell" is validated on the same
+  # OS rather than claiming Linux/macOS support this repository hasn't
+  # built or tested -- see docs/architecture.md and CONTRIBUTING.md.
+  validate-pwsh:
+    name: Validate (modern PowerShell / pwsh)
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: Run test suite (pwsh)
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          ./tests/run-tests.ps1
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
+  # Stable, matrix-independent summary job -- the ONE job name any future
+  # branch-protection ruleset for this repository should require, per
+  # this tooling's own CDA repository baseline practice (see
+  # COMPLIANCE.md and docs/safety-model.md).
+  ci-required:
+    name: ci-required
+    runs-on: ubuntu-latest
+    needs: [validate-powershell51, validate-pwsh]
+    if: always()
+    steps:
+      - name: Check required jobs
+        run: |
+          for result in "${{ needs.validate-powershell51.result }}" "${{ needs.validate-pwsh.result }}"; do
+            if [ "$result" != "success" ]; then
+              echo "A required job did not succeed: $result"
+              exit 1
+            fi
+          done
+          echo "All required jobs succeeded."

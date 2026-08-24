@@ -1,0 +1,180 @@
+{
+    "schemaVersion":  "1.0",
+    "repository":  "Continuous-DrivenArchitecture/example-npm-library",
+    "profile":  "cda-npm-library-v1",
+    "assessedAt":  "2026-01-01 00:00:00",
+    "stateFingerprint":  {
+                             "CapturedAt":  "2026-01-01 00:00:00",
+                             "DefaultBranch":  "main",
+                             "DefaultBranchSha":  "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+                             "MainSha":  "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+                             "DevelopSha":  null,
+                             "Rulesets":  [
+
+                                          ],
+                             "WorkflowShas":  [
+                                                  {
+                                                      "File":  "ci.yml",
+                                                      "Sha":  "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+                                                  }
+                                              ],
+                             "ReleaseConfigFile":  ".releaserc.json",
+                             "ReleaseConfigSha":  "cccccccccccccccccccccccccccccccccccccccc",
+                             "PackageJsonSha":  "dddddddddddddddddddddddddddddddddddddddd"
+                         },
+    "capabilities":  [
+                         {
+                             "id":  "repo.defaultBranch",
+                             "name":  "Default branch",
+                             "current":  "main",
+                             "target":  "main",
+                             "classification":  "COMPLIANT",
+                             "rationale":  "Already matches the CDA target.",
+                             "requiresManualChange":  false,
+                             "destructive":  false
+                         },
+                         {
+                             "id":  "repo.deleteBranchOnMerge",
+                             "name":  "Delete branch on merge",
+                             "current":  "False",
+                             "target":  "True",
+                             "classification":  "SAFE_CHANGE",
+                             "rationale":  "Enabling this protection has no semantic or historical impact on the repository.",
+                             "requiresManualChange":  false,
+                             "destructive":  false
+                         },
+                         {
+                             "id":  "repo.allowMergeCommit",
+                             "name":  "Allow merge commit",
+                             "current":  "True",
+                             "target":  "False",
+                             "classification":  "REVIEW_REQUIRED",
+                             "rationale":  "Disabling an in-use merge method blocks any open PR relying on it until merged another way.",
+                             "requiresManualChange":  false,
+                             "destructive":  false
+                         },
+                         {
+                             "id":  "secret.LEGACY_DEPLOY_TOKEN",
+                             "name":  "Secret: LEGACY_DEPLOY_TOKEN",
+                             "current":  "used by: release.yml",
+                             "target":  "n/a",
+                             "classification":  "REMOVE_CANDIDATE",
+                             "rationale":  "Name and usage pattern match a legacy credential no longer required under the target release model.",
+                             "requiresManualChange":  false,
+                             "destructive":  true
+                         },
+                         {
+                             "id":  "hygiene.pages",
+                             "name":  "Hygiene: GitHub Pages configuration",
+                             "current":  "absent",
+                             "target":  "absent",
+                             "classification":  "COMPLIANT",
+                             "rationale":  "No GitHub Pages configuration exists for this repository -- nothing to clean up.",
+                             "requiresManualChange":  false,
+                             "destructive":  false
+                         },
+                         {
+                             "id":  "hygiene.environment.githubPages",
+                             "name":  "Hygiene: github-pages environment",
+                             "current":  "absent",
+                             "target":  "absent",
+                             "classification":  "COMPLIANT",
+                             "rationale":  "No GitHub Environment named \u0027github-pages\u0027 exists -- nothing to clean up.",
+                             "requiresManualChange":  false,
+                             "destructive":  false
+                         }
+                     ],
+    "blockers":  [
+                     "Secret LEGACY_DEPLOY_TOKEN is a REMOVE_CANDIDATE -- confirm nothing still depends on it before removal."
+                 ],
+    "plan":  [
+                 {
+                     "phase":  1,
+                     "name":  "PHASE 1 - Repository hygiene and safe settings",
+                     "items":  [
+                                   {
+                                       "id":  "repo.deleteBranchOnMerge",
+                                       "capability":  "Delete branch on merge",
+                                       "current":  "False",
+                                       "target":  "True",
+                                       "classification":  "SAFE_CHANGE",
+                                       "rationale":  "Enabling this protection has no semantic or historical impact on the repository.",
+                                       "requiresManualChange":  false,
+                                       "destructive":  false
+                                   }
+                               ]
+                 },
+                 {
+                     "phase":  2,
+                     "name":  "PHASE 2 - CI normalization",
+                     "items":  [
+                                   {
+                                       "id":  "repo.allowMergeCommit",
+                                       "capability":  "Allow merge commit",
+                                       "current":  "True",
+                                       "target":  "False",
+                                       "classification":  "REVIEW_REQUIRED",
+                                       "rationale":  "Disabling an in-use merge method blocks any open PR relying on it until merged another way.",
+                                       "requiresManualChange":  false,
+                                       "destructive":  false
+                                   }
+                               ]
+                 },
+                 {
+                     "phase":  6,
+                     "name":  "PHASE 6 - Cleanup legacy configuration",
+                     "items":  [
+                                   {
+                                       "id":  "secret.LEGACY_DEPLOY_TOKEN",
+                                       "capability":  "Secret: LEGACY_DEPLOY_TOKEN",
+                                       "current":  "used by: release.yml",
+                                       "target":  "n/a",
+                                       "classification":  "REMOVE_CANDIDATE",
+                                       "rationale":  "Name and usage pattern match a legacy credential no longer required under the target release model.",
+                                       "requiresManualChange":  false,
+                                       "destructive":  true
+                                   }
+                               ]
+                 },
+                 {
+                     "phase":  7,
+                     "name":  "PHASE 7 - Final verification",
+                     "items":  [
+                                   {
+                                       "id":  "verification.reassess",
+                                       "capability":  "Final verification",
+                                       "current":  "n/a",
+                                       "target":  "n/a",
+                                       "classification":  "REVIEW_REQUIRED",
+                                       "rationale":  "After Phases 1-6 are approved and (in a future Apply capability) executed, re-run this assessment and confirm every capability reads COMPLIANT or KEEP_STRONGER.",
+                                       "requiresManualChange":  false,
+                                       "destructive":  false
+                                   }
+                               ]
+                 }
+             ],
+    "fullCdaCompliance":  {
+                              "Result":  "PARTIAL",
+                              "ProfileCompliance":  false,
+                              "BaselineHygieneCompliance":  true,
+                              "ProfileRowCount":  5,
+                              "BaselineHygieneRowCount":  1,
+                              "RemainingGaps":  [
+                                                    {
+                                                        "Capability":  "Delete branch on merge",
+                                                        "Classification":  "SAFE_CHANGE",
+                                                        "Category":  "Profile"
+                                                    },
+                                                    {
+                                                        "Capability":  "Allow merge commit",
+                                                        "Classification":  "REVIEW_REQUIRED",
+                                                        "Category":  "Profile"
+                                                    },
+                                                    {
+                                                        "Capability":  "Secret: LEGACY_DEPLOY_TOKEN",
+                                                        "Classification":  "REMOVE_CANDIDATE",
+                                                        "Category":  "Profile"
+                                                    }
+                                                ]
+                          }
+}

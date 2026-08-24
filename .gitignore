@@ -1,0 +1,17 @@
+# Operational evidence -- never committed. See docs/artifact-model.md,
+# "Report output location". tests/fixtures/ holds the sanitized, synthetic
+# examples this repository actually ships; anything under reports/ is
+# real output from a real command run and stays local.
+reports/
+*.local.json
+*.local.md
+
+# Editor / OS noise
+.vscode/
+.idea/
+*.swp
+Thumbs.db
+.DS_Store
+
+# PowerShell transcripts, if ever enabled locally
+*.PS1Transcript_*

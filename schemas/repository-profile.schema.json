@@ -1,0 +1,108 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://continuous-drivenarchitecture.example/schemas/repository-profile.schema.json",
+  "title": "CDA RepositoryProfile",
+  "description": "Desired GitHub-side state for a repository implementing CDA Repository Baseline v1, optionally extended by one repository-kind profile (e.g. cda-npm-library-v1). This describes the ACTUAL, EFFECTIVE (post-composition) shape produced by profiles/repository-baseline.json and profiles/npm-library.json -- fields are added here only once they exist in a real profile file, never speculatively. This schema validates a COMPLETE profile: either a base profile like repository-baseline.json (which has no `extends`), or the fully-resolved effective profile of an overlay like npm-library.json after Get-EffectiveCdaProfile composes it with what it extends -- never a raw, possibly-partial overlay file on its own (see docs/profiles.md).",
+  "type": "object",
+  "required": ["schemaVersion", "profileName", "repositorySettings", "actions", "security", "ruleset"],
+  "properties": {
+    "schemaVersion": { "type": "string", "const": "1.0" },
+    "profileName": { "type": "string" },
+    "extends": { "type": "string", "description": "Base profile name this profile's OWN file extends (resolved to profiles/<name>.json by Get-EffectiveCdaProfile). Optional -- a foundational profile like repository-baseline.json, which implements CDA Repository Baseline v1 directly rather than extending anything, correctly omits this field." },
+    "description": { "type": "string" },
+    "repositorySettings": {
+      "type": "object",
+      "required": ["defaultBranch", "deleteBranchOnMerge", "allowSquashMerge", "allowMergeCommit", "allowRebaseMerge", "allowAutoMerge"],
+      "properties": {
+        "defaultBranch": { "type": "string" },
+        "deleteBranchOnMerge": { "type": "boolean" },
+        "allowSquashMerge": { "type": "boolean" },
+        "allowMergeCommit": { "type": "boolean" },
+        "allowRebaseMerge": { "type": "boolean" },
+        "allowAutoMerge": { "type": "boolean" }
+      }
+    },
+    "actions": {
+      "type": "object",
+      "required": ["enabled", "defaultWorkflowPermissions", "allowedActionsPolicy", "shaPinningRequired"],
+      "properties": {
+        "enabled": { "type": "boolean" },
+        "defaultWorkflowPermissions": { "type": "string", "enum": ["read", "write"] },
+        "canApprovePullRequestReviews": { "type": "boolean" },
+        "allowedActionsPolicy": { "type": "string", "enum": ["all", "local_only", "selected"] },
+        "selectedActions": {
+          "type": "object",
+          "properties": {
+            "githubOwnedAllowed": { "type": "boolean" },
+            "verifiedAllowed": { "type": "boolean" },
+            "patternsAllowed": { "type": "array", "items": { "type": "string" } }
+          }
+        },
+        "shaPinningRequired": { "type": "boolean" },
+        "knownGitHubOwnedActionOwners": { "type": "array", "items": { "type": "string" } }
+      }
+    },
+    "security": {
+      "type": "object",
+      "required": ["vulnerabilityAlerts", "secretScanning", "secretScanningPushProtection", "dependabotSecurityUpdates"],
+      "properties": {
+        "vulnerabilityAlerts": { "type": "boolean" },
+        "secretScanning": { "type": "string", "enum": ["enabled", "disabled"] },
+        "secretScanningPushProtection": { "type": "string", "enum": ["enabled", "disabled"] },
+        "dependabotSecurityUpdates": { "type": "string", "enum": ["enabled", "disabled"] },
+        "codeQLDefaultSetup": {
+          "type": "object",
+          "properties": {
+            "applicableLanguages": { "type": "array", "items": { "type": "string" } },
+            "setupLanguages": { "type": "array", "items": { "type": "string" } },
+            "querySuite": { "type": "string" }
+          }
+        },
+        "dependencyReview": {
+          "type": "object",
+          "properties": { "note": { "type": "string" } }
+        }
+      }
+    },
+    "ruleset": {
+      "type": "object",
+      "required": ["name", "target", "refInclude", "enforcement", "bypassActors", "pullRequest", "requiredStatusChecks"],
+      "properties": {
+        "name": { "type": "string" },
+        "target": { "type": "string", "enum": ["branch", "tag"] },
+        "refInclude": { "type": "array", "items": { "type": "string" } },
+        "enforcement": { "type": "string", "enum": ["active", "disabled", "evaluate"] },
+        "bypassActors": { "type": "array", "items": { "type": "object" } },
+        "pullRequest": {
+          "type": "object",
+          "required": ["requiredApprovingReviewCount", "requireCodeOwnerReview", "requiredReviewThreadResolution", "allowedMergeMethods"],
+          "properties": {
+            "requiredApprovingReviewCount": { "type": "integer", "minimum": 0 },
+            "requiredApprovingReviewCountNote": { "type": "string" },
+            "requireCodeOwnerReview": { "type": "boolean" },
+            "requiredReviewThreadResolution": { "type": "boolean" },
+            "allowedMergeMethods": { "type": "array", "items": { "type": "string", "enum": ["merge", "squash", "rebase"] } }
+          }
+        },
+        "requiredStatusChecks": {
+          "type": "object",
+          "required": ["context", "strict"],
+          "properties": {
+            "context": { "type": "string" },
+            "strict": { "type": "boolean" },
+            "note": { "type": "string" }
+          }
+        },
+        "nonFastForward": { "type": "boolean" },
+        "deletion": { "type": "boolean" }
+      }
+    },
+    "npm": {
+      "type": "object",
+      "properties": {
+        "trustedPublisher": { "type": "string" }
+      }
+    }
+  },
+  "additionalProperties": true
+}

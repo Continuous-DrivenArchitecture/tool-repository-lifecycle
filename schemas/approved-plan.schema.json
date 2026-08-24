@@ -1,0 +1,58 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://continuous-drivenarchitecture.example/schemas/approved-plan.schema.json",
+  "title": "CDA ApprovedPlan",
+  "description": "Output of commands/approve-plan.ps1 (New-ApprovedPlan in src/adopter/lib/Approval.psm1) -- the HUMAN APPROVAL artifact. Immutable once written: commands/apply-plan.ps1 refuses to run against a plan whose recomputed planHash does not match the stored value (tamper detection -- see docs/artifact-model.md, 'Plan hash contract'). Never produced by any mutating call; this is pure data transformation from an Assessment.",
+  "type": "object",
+  "required": ["schemaVersion", "repository", "profile", "assessmentGeneratedAt", "assessmentCommitOrHead", "stateFingerprint", "planHash", "approvedAt", "approvedBy", "operations"],
+  "properties": {
+    "schemaVersion": { "type": "string", "const": "1.0" },
+    "repository": { "type": "string", "pattern": "^[A-Za-z0-9][A-Za-z0-9-]*/[A-Za-z0-9._-]+$" },
+    "profile": { "type": "string" },
+    "assessmentGeneratedAt": { "type": "string" },
+    "assessmentCommitOrHead": { "type": "string" },
+    "stateFingerprint": {
+      "type": "object",
+      "description": "Carried through verbatim from the source assessment -- see assessment.schema.json's own stateFingerprint definition. Re-read live and compared against by commands/apply-plan.ps1's pre-flight before any mutation (stale-plan protection)."
+    },
+    "planHash": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$",
+      "description": "Deterministic SHA-256 hex digest over a canonical JSON projection of {repository, profile, operations[]} -- see docs/artifact-model.md, 'Plan hash contract' for exactly which operation fields are included/excluded."
+    },
+    "approvedAt": { "type": "string" },
+    "approvedBy": { "type": "string" },
+    "operations": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/operation" }
+    }
+  },
+  "$defs": {
+    "classification": {
+      "type": "string",
+      "enum": ["COMPLIANT", "SAFE_CHANGE", "REVIEW_REQUIRED", "BLOCKED", "KEEP_STRONGER", "REMOVE_CANDIDATE", "NOT_AVAILABLE", "UNKNOWN"]
+    },
+    "operation": {
+      "type": "object",
+      "required": ["id", "phase", "phaseName", "capability", "classification", "current", "desired", "rationale", "requiresManualChange", "destructive", "dependencies", "action", "approved"],
+      "properties": {
+        "id": { "type": "string" },
+        "phase": { "type": "integer" },
+        "phaseName": { "type": "string" },
+        "capability": { "type": "string" },
+        "classification": { "$ref": "#/$defs/classification" },
+        "current": { "type": "string" },
+        "desired": { "type": "string" },
+        "rationale": { "type": "string" },
+        "requiresManualChange": { "type": "boolean" },
+        "destructive": {
+          "type": "boolean",
+          "description": "Independent safety property -- see docs/safety-model.md, 'Destructive operations registry'. A destructive operation can be approved ONLY via an explicit per-id -ApproveOperation, never via -ApproveSafeChanges, regardless of its classification."
+        },
+        "dependencies": { "type": "array", "items": { "type": "string" }, "description": "Human-readable preconditions this operation depends on; the EXECUTABLE re-check of each lives in src/adopter/lib/Apply.psm1's Test-OperationPreconditions, keyed by the same operation id." },
+        "action": { "type": "string" },
+        "approved": { "type": "boolean" }
+      }
+    }
+  }
+}
