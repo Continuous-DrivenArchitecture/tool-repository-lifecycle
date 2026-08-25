@@ -203,7 +203,15 @@ function Get-ActionsPlan {
 
 function Get-SecurityPlan {
     [CmdletBinding()]
-    param([Parameter(Mandatory)] $RepoData, [Parameter(Mandatory)] $Desired, [Parameter(Mandatory)] [string[]]$Languages, [Parameter(Mandatory)] [string]$Mode, [Parameter(Mandatory)] [bool]$DryRun, [Parameter(Mandatory)] [string]$Owner, [Parameter(Mandatory)] [string]$Repo)
+    # -Languages is deliberately NOT [Parameter(Mandatory)]: PowerShell's
+    # parameter binder rejects an empty array against a Mandatory
+    # array-typed parameter (confirmed empirically), not just $null -- but
+    # zero languages is a real, legitimate state (a brand-new repository, or
+    # one GitHub hasn't finished analyzing yet), already handled correctly
+    # by this function's own body (@($Languages) | Where-Object ... below
+    # simply matches nothing). Defaulting to @() here keeps that path
+    # working even if a future caller omits the argument entirely.
+    param([Parameter(Mandatory)] $RepoData, [Parameter(Mandatory)] $Desired, [string[]]$Languages = @(), [Parameter(Mandatory)] [string]$Mode, [Parameter(Mandatory)] [bool]$DryRun, [Parameter(Mandatory)] [string]$Owner, [Parameter(Mandatory)] [string]$Repo)
 
     $items = @()
     $sa = $RepoData.security_and_analysis
@@ -409,7 +417,14 @@ function Invoke-Provisioning {
     $owner = $nameCheck.Owner
     $repo = $nameCheck.Repo
     $repoData = $eligibility.RepoData
-    $languages = Get-RepositoryLanguages -Owner $owner -Repo $repo
+    # @() wrapper is load-bearing: PowerShell collapses an empty array
+    # returned through the pipeline to $null on simple assignment (confirmed
+    # empirically) -- a brand-new repository GitHub hasn't finished
+    # language-analyzing yet legitimately returns zero languages from
+    # Get-RepositoryLanguages, and Get-SecurityPlan's -Languages parameter
+    # is Mandatory, so an unwrapped $null here fails parameter binding
+    # before any plan can be computed at all.
+    $languages = @(Get-RepositoryLanguages -Owner $owner -Repo $repo)
 
     $plan = @()
     $plan += Get-RepositorySettingsPlan -RepoData $repoData -Desired $CdaProfile.repositorySettings -Mode $Mode -DryRun $DryRun -Owner $owner -Repo $repo
